@@ -34,5 +34,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# data
-data/waitlist.json
+# data (user data, caches, archives)
+/data/

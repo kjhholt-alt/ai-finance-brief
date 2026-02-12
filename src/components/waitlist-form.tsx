@@ -1,10 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 
 export function WaitlistForm() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [message, setMessage] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
@@ -22,7 +28,7 @@ export function WaitlistForm() {
 
       if (res.ok) {
         setStatus("success");
-        setMessage("You're on the list! We'll notify you when we launch.");
+        setMessage("You are on the list! We will notify you when we launch.");
         setEmail("");
       } else {
         setStatus("error");
@@ -35,31 +41,55 @@ export function WaitlistForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md">
-      <input
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Enter your email"
-        className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-      />
-      <button
-        type="submit"
-        disabled={status === "loading"}
-        className="px-6 py-3 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white font-medium rounded-lg transition-colors whitespace-nowrap"
-      >
-        {status === "loading" ? "Joining..." : "Join Waitlist"}
-      </button>
-      {status !== "idle" && status !== "loading" && (
-        <p
-          className={`text-sm mt-1 sm:mt-0 sm:absolute sm:top-full sm:left-0 sm:pt-2 ${
-            status === "success" ? "text-green-400" : "text-red-400"
-          }`}
+    <div className="w-full max-w-md">
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+        <Input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
+          className="h-12 bg-white/[0.04] border-white/[0.1] text-foreground placeholder:text-muted-foreground focus-visible:ring-indigo-500/50 focus-visible:border-indigo-500/50"
+        />
+        <Button
+          type="submit"
+          disabled={status === "loading"}
+          className="h-12 px-6 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/35 transition-all whitespace-nowrap"
         >
-          {message}
-        </p>
-      )}
-    </form>
+          {status === "loading" ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Joining...
+            </>
+          ) : (
+            <>
+              Join Waitlist
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </Button>
+      </form>
+
+      <AnimatePresence mode="wait">
+        {status !== "idle" && status !== "loading" && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className={`flex items-center gap-2 mt-3 text-sm ${
+              status === "success" ? "text-emerald-400" : "text-red-400"
+            }`}
+          >
+            {status === "success" ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            )}
+            {message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

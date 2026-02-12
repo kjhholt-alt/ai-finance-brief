@@ -3,6 +3,28 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  BookOpen,
+  TrendingUp,
+  TrendingDown,
+  PieChart,
+  Eye,
+  RefreshCw,
+  Loader2,
+  AlertCircle,
+  BarChart3,
+  Sparkles,
+  Target,
+  Lightbulb,
+  Calendar,
+  Clock,
+} from "lucide-react";
+import { BriefRating } from "@/components/brief-rating";
 
 interface TopMover {
   ticker: string;
@@ -17,13 +39,51 @@ interface SectorData {
   insight: string;
 }
 
+interface WatchEvent {
+  time: string;
+  event: string;
+  why: string;
+}
+
 interface BriefData {
   date: string;
   generatedAt: string;
   summary: string;
+  marketPulse?: string;
   topMovers: TopMover[];
   sectorPerformance: SectorData[];
+  sectorSpotlight?: string;
+  nonObviousTake?: string;
+  thingToWatch?: string;
+  todayCalendar?: WatchEvent[];
   outlook: string;
+  dataSourcesUsed?: string[];
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, delay: i * 0.1, ease: "easeOut" as const },
+  }),
+};
+
+function SkeletonCard() {
+  return (
+    <Card className="glass border-white/[0.06] bg-white/[0.02]">
+      <CardHeader>
+        <div className="h-5 bg-white/[0.06] rounded w-1/3 animate-pulse" />
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          <div className="h-3 bg-white/[0.06] rounded w-full animate-pulse" />
+          <div className="h-3 bg-white/[0.06] rounded w-5/6 animate-pulse" />
+          <div className="h-3 bg-white/[0.06] rounded w-4/6 animate-pulse" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function DashboardPage() {
@@ -63,7 +123,10 @@ export default function DashboardPage() {
   if (status === "loading") {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          Loading...
+        </div>
       </div>
     );
   }
@@ -71,217 +134,333 @@ export default function DashboardPage() {
   if (!session) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8"
+      >
         <div>
-          <h1 className="text-2xl font-bold text-white">Market Brief</h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            <BarChart3 className="w-7 h-7 text-indigo-400" />
+            Market Brief
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
             {brief
               ? `Generated ${new Date(brief.generatedAt).toLocaleString()}`
               : "Loading your daily brief..."}
           </p>
         </div>
-        <button
+        <Button
           onClick={generateBrief}
           disabled={loading}
-          className="px-4 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+          className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
         >
           {loading ? (
             <>
-              <svg
-                className="w-4 h-4 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
+              <Loader2 className="w-4 h-4 animate-spin" />
               Generating...
             </>
           ) : (
-            "Generate New Brief"
+            <>
+              <RefreshCw className="w-4 h-4" />
+              Generate New Brief
+            </>
           )}
-        </button>
-      </div>
+        </Button>
+      </motion.div>
 
-      {error && (
-        <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-          {error}
-        </div>
-      )}
+      {/* Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-6"
+          >
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              {error}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
+      {/* Loading skeletons */}
       {loading && !brief ? (
         <div className="space-y-6">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl bg-white/5 border border-white/10 p-6 animate-pulse"
-            >
-              <div className="h-4 bg-white/10 rounded w-1/4 mb-4" />
-              <div className="h-3 bg-white/10 rounded w-full mb-2" />
-              <div className="h-3 bg-white/10 rounded w-3/4" />
-            </div>
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : brief ? (
         <div className="space-y-6">
-          {/* Summary Card */}
-          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
-            <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-brand-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
-                />
-              </svg>
-              Market Summary
-            </h2>
-            <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-              {brief.summary}
-            </p>
-          </div>
+          {/* Market Pulse / Summary Card */}
+          <motion.div custom={0} initial="hidden" animate="visible" variants={cardVariants}>
+            <Card className="glass border-white/[0.06] bg-white/[0.02]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                    <BookOpen className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  Market Pulse
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-line">
+                  {brief.marketPulse || brief.summary}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Top Movers Card */}
-          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-brand-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"
-                />
-              </svg>
-              Top Movers
-            </h2>
-            <div className="space-y-4">
-              {brief.topMovers.map((mover) => (
-                <div
-                  key={mover.ticker}
-                  className="flex items-start gap-4 p-4 rounded-lg bg-white/5"
-                >
-                  <div className="shrink-0">
-                    <span className="text-sm font-bold text-white bg-white/10 px-2 py-1 rounded">
-                      {mover.ticker}
-                    </span>
+          <motion.div custom={1} initial="hidden" animate="visible" variants={cardVariants}>
+            <Card className="glass border-white/[0.06] bg-white/[0.02]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm text-gray-300">
-                        {mover.name}
-                      </span>
-                      <span
-                        className={`text-sm font-medium ${
-                          mover.change.startsWith("+")
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }`}
+                  Top Movers
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {brief.topMovers.map((mover) => (
+                    <div
+                      key={mover.ticker}
+                      className="flex items-start gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
+                    >
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 font-mono font-bold border-white/[0.1] bg-white/[0.04]"
                       >
-                        {mover.change}
-                      </span>
+                        {mover.ticker}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm text-foreground font-medium">
+                            {mover.name}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              mover.change.startsWith("+")
+                                ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
+                                : "text-red-400 border-red-500/30 bg-red-500/10"
+                            }`}
+                          >
+                            {mover.change.startsWith("+") ? (
+                              <TrendingUp className="w-3 h-3 mr-1" />
+                            ) : (
+                              <TrendingDown className="w-3 h-3 mr-1" />
+                            )}
+                            {mover.change}
+                          </Badge>
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                          {mover.analysis}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-gray-400 text-sm">{mover.analysis}</p>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Two-column: Sector Spotlight + Non-Obvious Take */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Sector Spotlight */}
+            {brief.sectorSpotlight && (
+              <motion.div custom={2} initial="hidden" animate="visible" variants={cardVariants}>
+                <Card className="glass border-white/[0.06] bg-white/[0.02] h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                        <Target className="w-3.5 h-3.5 text-purple-400" />
+                      </div>
+                      Sector Spotlight
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {brief.sectorSpotlight}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Non-Obvious Take */}
+            {brief.nonObviousTake && (
+              <motion.div custom={2.5} initial="hidden" animate="visible" variants={cardVariants}>
+                <Card className="border-purple-500/20 bg-gradient-to-br from-purple-950/30 to-purple-900/10 h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                        <Lightbulb className="w-3.5 h-3.5 text-purple-400" />
+                      </div>
+                      Non-Obvious Take
+                      <Badge variant="outline" className="ml-auto text-xs text-purple-400 border-purple-500/30 bg-purple-500/10">
+                        Insight
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {brief.nonObviousTake}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
           </div>
 
           {/* Sector Performance Card */}
-          <div className="rounded-xl bg-white/5 border border-white/10 p-6">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-brand-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z"
-                />
-              </svg>
-              Sector Performance
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {brief.sectorPerformance.map((sector) => (
-                <div
-                  key={sector.sector}
-                  className="p-4 rounded-lg bg-white/5"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">
-                      {sector.sector}
-                    </span>
-                    <span
-                      className={`text-sm font-medium ${
-                        sector.performance.startsWith("+")
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {sector.performance}
-                    </span>
+          <motion.div custom={3} initial="hidden" animate="visible" variants={cardVariants}>
+            <Card className="glass border-white/[0.06] bg-white/[0.02]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <PieChart className="w-4 h-4 text-amber-400" />
                   </div>
-                  <p className="text-gray-400 text-xs">{sector.insight}</p>
+                  Sector Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {brief.sectorPerformance.map((sector) => (
+                    <div
+                      key={sector.sector}
+                      className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04] hover:bg-white/[0.04] transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {sector.sector}
+                        </span>
+                        <span
+                          className={`text-sm font-semibold ${
+                            sector.performance.startsWith("+")
+                              ? "text-emerald-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {sector.performance}
+                        </span>
+                      </div>
+                      <p className="text-muted-foreground text-xs leading-relaxed">
+                        {sector.insight}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Thing to Watch Card */}
+          {brief.thingToWatch && (
+            <motion.div custom={4} initial="hidden" animate="visible" variants={cardVariants}>
+              <Card className="border-amber-500/20 bg-gradient-to-br from-amber-950/30 to-amber-900/10">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                      <AlertCircle className="w-4 h-4 text-amber-400" />
+                    </div>
+                    Thing to Watch Today
+                    <Badge variant="outline" className="ml-auto text-xs text-amber-400 border-amber-500/30 bg-amber-500/10">
+                      Key Event
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {brief.thingToWatch}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Today's Calendar */}
+          {brief.todayCalendar && brief.todayCalendar.length > 0 && (
+            <motion.div custom={4.5} initial="hidden" animate="visible" variants={cardVariants}>
+              <Card className="glass border-white/[0.06] bg-white/[0.02]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                      <Calendar className="w-4 h-4 text-cyan-400" />
+                    </div>
+                    Today&apos;s Calendar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {brief.todayCalendar.map((event, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]"
+                      >
+                        <div className="flex items-center gap-1.5 shrink-0 min-w-[80px]">
+                          <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                          <span className="text-xs font-mono text-cyan-400">
+                            {event.time}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-foreground">
+                            {event.event}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {event.why}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Outlook Card */}
-          <div className="rounded-xl bg-gradient-to-br from-brand-900/30 to-brand-950/20 border border-brand-500/20 p-6">
-            <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <svg
-                className="w-5 h-5 text-brand-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              Forward Outlook
-            </h2>
-            <p className="text-gray-300 text-sm leading-relaxed">
-              {brief.outlook}
-            </p>
-          </div>
+          <motion.div custom={5} initial="hidden" animate="visible" variants={cardVariants}>
+            <Card className="border-indigo-500/20 bg-gradient-to-br from-indigo-950/30 to-indigo-900/10">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  Forward Outlook
+                  <Sparkles className="w-4 h-4 text-indigo-400/60 ml-auto" />
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {brief.outlook}
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Data Sources */}
+          {brief.dataSourcesUsed && brief.dataSourcesUsed.length > 0 && (
+            <motion.div custom={5.5} initial="hidden" animate="visible" variants={cardVariants}>
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/40">
+                <Separator className="flex-1 bg-white/[0.04]" />
+                <span>Sources: {brief.dataSourcesUsed.join(", ")}</span>
+                <Separator className="flex-1 bg-white/[0.04]" />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Brief Rating */}
+          <BriefRating date={brief.date} />
         </div>
       ) : null}
     </div>

@@ -3,137 +3,187 @@
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import {
+  BarChart3,
+  Menu,
+  LayoutDashboard,
+  LogOut,
+  LogIn,
+  Sparkles,
+  Zap,
+  Archive,
+  Settings,
+} from "lucide-react";
 
 export function Navigation() {
   const { data: session } = useSession();
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <nav className="border-b border-white/10 bg-black/20 backdrop-blur-md sticky top-0 z-50">
+    <nav className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-background/60 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-sm">
-              AF
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/30 transition-shadow">
+              <BarChart3 className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white font-semibold text-lg">
+            <span className="text-foreground font-semibold text-lg tracking-tight hidden sm:block">
               AI Finance Brief
             </span>
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link
-              href="/#features"
-              className="text-gray-300 hover:text-white transition-colors text-sm"
-            >
-              Features
-            </Link>
-            <Link
-              href="/#pricing"
-              className="text-gray-300 hover:text-white transition-colors text-sm"
-            >
-              Pricing
-            </Link>
+          <div className="hidden md:flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/#features" className="text-muted-foreground hover:text-foreground">
+                <Sparkles className="w-4 h-4 mr-1.5" />
+                Features
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/#pricing" className="text-muted-foreground hover:text-foreground">
+                <Zap className="w-4 h-4 mr-1.5" />
+                Beta Access
+              </Link>
+            </Button>
             {session?.user ? (
               <>
-                <Link
-                  href="/dashboard"
-                  className="text-gray-300 hover:text-white transition-colors text-sm"
-                >
-                  Dashboard
-                </Link>
-                <button
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                    <LayoutDashboard className="w-4 h-4 mr-1.5" />
+                    Dashboard
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/archive" className="text-muted-foreground hover:text-foreground">
+                    <Archive className="w-4 h-4 mr-1.5" />
+                    Archive
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/settings" className="text-muted-foreground hover:text-foreground">
+                    <Settings className="w-4 h-4 mr-1.5" />
+                    Settings
+                  </Link>
+                </Button>
+                <Separator orientation="vertical" className="mx-2 h-6" />
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => signOut()}
-                  className="text-sm text-gray-400 hover:text-white transition-colors"
+                  className="text-muted-foreground hover:text-foreground"
                 >
+                  <LogOut className="w-4 h-4 mr-1.5" />
                   Sign Out
-                </button>
+                </Button>
               </>
             ) : (
-              <Link
-                href="/signin"
-                className="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              >
-                Sign In
-              </Link>
+              <>
+                <Separator orientation="vertical" className="mx-2 h-6" />
+                <Button size="sm" asChild className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20">
+                  <Link href="/signin">
+                    <LogIn className="w-4 h-4 mr-1.5" />
+                    Sign In
+                  </Link>
+                </Button>
+              </>
             )}
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden text-gray-300"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              {mobileOpen ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              )}
-            </svg>
-          </button>
+          {/* Mobile menu */}
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon">
+                <Menu className="w-5 h-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 bg-background/95 backdrop-blur-xl border-white/[0.06]">
+              <div className="flex flex-col gap-1 mt-8">
+                <SheetClose asChild>
+                  <Link
+                    href="/#features"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Features
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link
+                    href="/#pricing"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                  >
+                    <Zap className="w-4 h-4" />
+                    Beta Access
+                  </Link>
+                </SheetClose>
+                {session?.user ? (
+                  <>
+                    <SheetClose asChild>
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        Dashboard
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link
+                        href="/archive"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                      >
+                        <Archive className="w-4 h-4" />
+                        Archive
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Settings
+                      </Link>
+                    </SheetClose>
+                    <Separator className="my-2" />
+                    <button
+                      onClick={() => {
+                        signOut();
+                        setOpen(false);
+                      }}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors w-full text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Separator className="my-2" />
+                    <SheetClose asChild>
+                      <Link href="/signin">
+                        <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white">
+                          <LogIn className="w-4 h-4 mr-1.5" />
+                          Sign In
+                        </Button>
+                      </Link>
+                    </SheetClose>
+                  </>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
-
-        {/* Mobile menu */}
-        {mobileOpen && (
-          <div className="md:hidden pb-4 space-y-2">
-            <Link
-              href="/#features"
-              className="block text-gray-300 hover:text-white py-2 text-sm"
-              onClick={() => setMobileOpen(false)}
-            >
-              Features
-            </Link>
-            <Link
-              href="/#pricing"
-              className="block text-gray-300 hover:text-white py-2 text-sm"
-              onClick={() => setMobileOpen(false)}
-            >
-              Pricing
-            </Link>
-            {session?.user ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="block text-gray-300 hover:text-white py-2 text-sm"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Dashboard
-                </Link>
-                <button
-                  onClick={() => signOut()}
-                  className="block text-gray-400 hover:text-white py-2 text-sm"
-                >
-                  Sign Out
-                </button>
-              </>
-            ) : (
-              <Link
-                href="/signin"
-                className="block bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium text-center"
-                onClick={() => setMobileOpen(false)}
-              >
-                Sign In
-              </Link>
-            )}
-          </div>
-        )}
       </div>
     </nav>
   );

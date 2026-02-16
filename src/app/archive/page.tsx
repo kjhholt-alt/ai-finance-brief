@@ -20,6 +20,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { UpgradeCta } from "@/components/upgrade-cta";
 
 interface ArchivedBrief {
   date: string;
@@ -38,6 +39,7 @@ export default function ArchivePage() {
   const [briefs, setBriefs] = useState<ArchivedBrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBrief, setSelectedBrief] = useState<ArchivedBrief | null>(null);
+  const [userTier, setUserTier] = useState<"free" | "pro">("free");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -54,10 +56,19 @@ export default function ArchivePage() {
   const fetchArchive = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/brief/archive");
-      if (res.ok) {
-        const data = await res.json();
+      const [archiveRes, tierRes] = await Promise.all([
+        fetch("/api/brief/archive"),
+        fetch("/api/user/tier"),
+      ]);
+
+      if (archiveRes.ok) {
+        const data = await archiveRes.json();
         setBriefs(data.briefs || []);
+      }
+
+      if (tierRes.ok) {
+        const tierData = await tierRes.json();
+        setUserTier(tierData.tier || "free");
       }
     } catch {
       // Archive might not have briefs yet
@@ -285,7 +296,7 @@ export default function ArchivePage() {
         </motion.div>
       ) : (
         <div className="space-y-3">
-          {briefs.map((brief, i) => (
+          {(userTier === "free" ? briefs.slice(0, 3) : briefs).map((brief, i) => (
             <motion.div
               key={brief.date}
               initial={{ opacity: 0, y: 20 }}
@@ -327,6 +338,15 @@ export default function ArchivePage() {
               </Card>
             </motion.div>
           ))}
+
+          {userTier === "free" && briefs.length > 3 && (
+            <div className="mt-6">
+              <UpgradeCta
+                feature="Full Archive Access"
+                description={`You're seeing 3 of ${briefs.length} briefs. Upgrade to Pro for unlimited access to your complete brief history.`}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

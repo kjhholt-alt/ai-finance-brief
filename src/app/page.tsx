@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,7 @@ import {
   Clock,
   Target,
   Users,
+  Loader2,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -151,6 +152,51 @@ const faqs = [
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
+
+function ProCheckoutButton() {
+  const [loading, setLoading] = useState(false);
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      }
+    } catch {
+      // fallback
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Button
+      onClick={handleCheckout}
+      disabled={loading}
+      className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all"
+    >
+      {loading ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin mr-1" />
+          Loading...
+        </>
+      ) : (
+        <>
+          Get Pro
+          <ArrowRight className="w-4 h-4 ml-1" />
+        </>
+      )}
+    </Button>
+  );
+}
 
 export default function Home() {
   return (
@@ -565,11 +611,11 @@ export default function Home() {
             {/* Pro Tier */}
             <motion.div variants={staggerItem}>
               <Card className="relative h-full flex flex-col border-indigo-500/30 bg-gradient-to-b from-indigo-950/40 to-white/[0.02] shadow-lg shadow-indigo-500/10">
-                {/* Coming soon ribbon */}
+                {/* Most popular ribbon */}
                 <div className="absolute -top-3 right-6">
                   <Badge className="bg-indigo-600 text-white border-0 shadow-lg shadow-indigo-500/30 px-3 py-1">
                     <Zap className="w-3 h-3 mr-1" />
-                    Coming Soon
+                    Most Popular
                   </Badge>
                 </div>
 
@@ -605,16 +651,7 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="w-full h-11 border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 transition-all"
-                  >
-                    <a href="#waitlist">
-                      Join Waitlist
-                      <ChevronRight className="w-4 h-4 ml-1" />
-                    </a>
-                  </Button>
+                  <ProCheckoutButton />
                 </CardContent>
               </Card>
             </motion.div>

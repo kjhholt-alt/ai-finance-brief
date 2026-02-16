@@ -1,76 +1,64 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { createServerSupabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
-
-const USERS_PATH = path.join(process.cwd(), "data", "users.json");
-
-interface UserPreferences {
-  email: string;
-  userType?: string;
-  sectors?: string[];
-  onboardingCompleted?: boolean;
-  emailOptIn?: boolean;
-  timezone?: string;
-  watchlist?: string[];
-  createdAt: string;
-  lastLoginAt: string;
-}
-
-async function getUsers(): Promise<UserPreferences[]> {
-  try {
-    const data = await fs.readFile(USERS_PATH, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-async function saveUsers(users: UserPreferences[]): Promise<void> {
-  const dir = path.dirname(USERS_PATH);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(USERS_PATH, JSON.stringify(users, null, 2));
-}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { email, userType, sectors, onboardingCompleted, emailOptIn, timezone, watchlist } = body;
 
-    // For MVP, we store by email. In production this would use auth session.
-    const users = await getUsers();
-    const existingIndex = users.findIndex((u) => u.email === email);
+    if (!email) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
 
-    const now = new Date().toISOString();
+    const supabase = createServerSupabase();
 
-    if (existingIndex >= 0) {
-      // Update existing user
-      const user = users[existingIndex];
-      if (userType !== undefined) user.userType = userType;
-      if (sectors !== undefined) user.sectors = sectors;
-      if (onboardingCompleted !== undefined) user.onboardingCompleted = onboardingCompleted;
-      if (emailOptIn !== undefined) user.emailOptIn = emailOptIn;
-      if (timezone !== undefined) user.timezone = timezone;
-      if (watchlist !== undefined) user.watchlist = watchlist;
-      user.lastLoginAt = now;
-      users[existingIndex] = user;
-    } else if (email) {
-      // Create new user
-      users.push({
-        email,
-        userType: userType || "",
-        sectors: sectors || [],
-        onboardingCompleted: onboardingCompleted || false,
-        emailOptIn: emailOptIn !== false,
-        timezone: timezone || "America/New_York",
-        watchlist: watchlist || [],
-        createdAt: now,
-        lastLoginAt: now,
+    const preferences = {
+      userType: userType || "",
+      sectors: sectors || [],
+      onboardingCompleted: onboardingCompleted || false,
+      emailOptIn: emailOptIn !== false,
+      timezone: timezone || "America/New_York",
+      watchlist: watchlist || [],
+    };
+
+    // Upsert user preferences
+    const { data: existing } = await supabase
+      .from("user_preferences")
+      .select("id, preferences")
+      .eq("user_id", email)
+      .single();
+
+    if (existing) {
+      // Merge with existing preferences
+      const merged = { ...(existing.preferences as Record<string, unknown>), ...preferences };
+      // Only update fields that were actually provided
+      if (userType !== undefined) merged.userType = userType;
+      if (sectors !== undefined) merged.sectors = sectors;
+      if (onboardingCompleted !== undefined) merged.onboardingCompleted = onboardingCompleted;
+      if (emailOptIn !== undefined) merged.emailOptIn = emailOptIn;
+      if (timezone !== undefined) merged.timezone = timezone;
+      if (watchlist !== undefined) merged.watchlist = watchlist;
+
+      await supabase
+        .from("user_preferences")
+        .update({ preferences: merged, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+    } else {
+      await supabase.from("user_preferences").insert({
+        user_id: email,
+        preferences,
       });
     }
 
-    await saveUsers(users);
+    // Also upsert profile
+    await supabase
+      .from("profiles")
+      .upsert(
+        { user_id: email, email, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
 
     return NextResponse.json({ success: true });
   } catch {
@@ -80,8 +68,12 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const users = await getUsers();
-    return NextResponse.json({ count: users.length });
+    const supabase = createServerSupabase();
+    const { count } = await supabase
+      .from("user_preferences")
+      .select("*", { count: "exact", head: true });
+
+    return NextResponse.json({ count: count || 0 });
   } catch {
     return NextResponse.json({ error: "Failed to fetch data" }, { status: 500 });
   }

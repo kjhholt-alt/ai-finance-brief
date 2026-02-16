@@ -3,92 +3,113 @@
 
 ## Quick Status
 - **Project:** AI Finance Brief
-- **Current session:** 8 of 8 (all sessions completed)
-- **Last updated:** 2026-02-11
-- **Overall health:** 🟢 On track (TypeScript compiles clean, build needs verification with more system resources)
+- **Current session:** 10 (revenue-ready upgrade)
+- **Last updated:** 2026-02-15
+- **Overall health:** 🟢 BUILD PASSES — ready for deploy after env vars set
 
 ---
 
 ## What's Working
-- Landing page (Bloomberg-meets-SaaS: hero, how it works, sample brief preview, pricing tiers, FAQ accordion, waitlist CTA)
+- Landing page (Bloomberg-meets-SaaS: hero, how it works, sample brief preview, pricing tiers with live checkout button, FAQ accordion)
 - Navigation (responsive desktop + mobile sheet menu, auth-aware, links to Dashboard/Archive/Settings)
 - Footer (product links, legal links, social icons)
 - Auth system (NextAuth v5 credentials provider for MVP)
 - Sign-in page
 - Dashboard page (market pulse, top movers, sector spotlight, non-obvious take, sector performance grid, thing to watch, today's calendar, outlook, data sources, rating widget)
-- Brief generation engine (Claude API + Alpha Vantage market data + mock fallbacks)
-- Market data module (SPY/QQQ/DIA quotes, top gainers/losers, pre-market data with fallbacks)
-- Daily caching (one brief per day, force refresh option)
-- Brief archiving (saves to data/briefs/ by date)
-- Archive page (browse past briefs, click to view full brief detail)
-- Archive API endpoint
-- Brief by date API endpoint
-- Rating system (star rating + optional feedback, stored as JSON)
-- Rating API (POST to submit, GET for stats)
+- Brief generation engine (Claude API + Alpha Vantage market data + mock fallbacks) — **now cached in Supabase**
+- Market data module (SPY/QQQ/DIA quotes, top gainers/losers, pre-market data with fallbacks) — **now stored in Supabase**
+- Daily caching via Supabase `briefs` table (replaces JSON files)
+- Brief archiving via Supabase (replaces data/briefs/ directory)
+- Archive page (browse past briefs, click to view full brief detail) — **Pro users get full archive, free users see last 3**
+- Archive API endpoint (Supabase-backed)
+- Brief by date API endpoint (Supabase-backed)
+- Rating system (star rating + optional feedback) — **stored in Supabase**
+- Rating API (POST to submit, GET for stats) — **Supabase-backed**
 - Rate limiting on API routes (10 req/min)
-- Waitlist API (email collection)
+- Waitlist API (email collection) — **Supabase-backed**
 - Onboarding flow (3-step: user type, sector interests, summary)
-- User preferences API (JSON file storage)
+- User preferences API — **Supabase-backed**
 - Settings page (account info, investor profile, sector selection, watchlist, email opt-in, timezone)
 - Email template (dark finance theme, full HTML, sections for summary/movers/sectors/watch/outlook)
 - Cron endpoint for daily email delivery (weekday check, batch sending)
 - Terms of Service page
 - Privacy Policy page
+- **NEW: Supabase database (replaces all JSON file storage)**
+- **NEW: LemonSqueezy payment integration ($9/mo Pro plan)**
+  - Checkout API (`/api/checkout`) — generates LemonSqueezy checkout URL
+  - Webhook handler (`/api/lemonsqueezy/webhook`) — processes subscription events with HMAC verification
+  - Subscription helper (`getUserTier()`) — checks active subscription status
+- **NEW: Feature gating (free vs pro tiers)**
+  - Free: 1 brief/day, 2 sectors (tech, finance), 3 archive briefs, no AI chat
+  - Pro: unlimited briefs, 10 sectors, full archive, AI chat, email delivery, custom watchlist
+  - UpgradeCTA component (compact and full variants)
+  - User tier API endpoint (`/api/user/tier`)
+- **NEW: 20 programmatic SEO sector pages** (`/briefs/[sector]`)
+  - technology, healthcare, energy, finance, consumer, industrial, real-estate, crypto, commodities, emerging-markets, utilities, materials, communication-services, small-caps, dividends-income, ai-machine-learning, defense-aerospace, clean-energy, biotech, global-macro
+  - Each with full SEO metadata, sample tickers, feature descriptions, related sectors
+  - Pre-rendered at build time via `generateStaticParams()`
+  - All included in sitemap
 - SEO meta tags (OpenGraph, Twitter cards, keywords, robots)
-- Sitemap (auto-generated)
+- Sitemap (auto-generated, includes sector pages)
 - Robots.txt (auto-generated)
 - shadcn/ui components (button, card, input, badge, separator, accordion, avatar, dropdown, sheet)
 - Dark theme with indigo/purple palette, glass morphism, gradient utilities
 - Framer Motion animations throughout
 - TypeScript compiles with zero errors
+- `next build` passes successfully
 
 ## What's Broken / Incomplete
-- `next build` hangs on this machine (too many Node processes consuming memory) — TypeScript compiles fine
 - Email delivery untested (needs real Resend API key in .env.local)
 - Alpha Vantage API key set to "demo" (limited to sample data — get a free key at alphavantage.co)
-- Not yet deployed to Vercel
 - No real-world testing with live market data
+- **Supabase tables need to be created** — run `supabase/migrations/001_initial.sql` against the database
+- **LemonSqueezy product/variant needs creation** — set LEMONSQUEEZY_VARIANT_ID after creating the $9/mo product
+- **New env vars needed in Vercel:**
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `LEMONSQUEEZY_API_KEY`
+  - `LEMONSQUEEZY_WEBHOOK_SECRET`
+  - `LEMONSQUEEZY_STORE_ID`
+  - `LEMONSQUEEZY_VARIANT_ID`
 
 ---
 
 ## Last Session Summary
-**Date:** 2026-02-11
-**Goal:** Execute full overnight build (Sessions 1-8, skip 5/payments)
+**Date:** 2026-02-15
+**Goal:** Revenue-ready upgrade (Supabase migration, payments, feature gating, SEO pages)
 **What got done:**
-- Session 1: Landing page (completed by agent), auth, waitlist, navigation, footer
-- Session 2: Market data module (Alpha Vantage + mocks), brief generation pipeline, daily caching
-- Session 3: Email template, cron delivery endpoint, Resend integration
-- Session 4: Onboarding flow, user preferences API, settings page
-- Session 5: Skipped (free beta, no Stripe)
-- Session 6: Archive page + API, brief rating component + API, dashboard enhanced with all new fields (sector spotlight, non-obvious take, today's calendar, data sources)
-- Session 7: TypeScript verification (zero errors), file inventory verified
-- Session 8: Terms page, privacy page, SEO meta tags, sitemap, robots.txt, footer links updated
-- STATUS.md and PROJECTS.md tracking files set up for all 3 projects
+- Phase 1: Migrated all JSON file storage to Supabase (briefs, ratings, waitlist, preferences, market snapshots)
+- Phase 2: LemonSqueezy payment integration (checkout API, webhook handler, subscription helper)
+- Phase 3: Feature gating system (free/pro tiers, UpgradeCTA component, tier-aware pages)
+- Phase 4: 20 programmatic SEO sector landing pages with full metadata
+- TypeScript compiles with zero errors
+- `next build` passes with all new routes
 
 **What didn't get done (and why):**
-- Full `next build` verification (machine memory exhausted from too many Node processes)
-- Email delivery testing (needs Resend API key)
-- Vercel deployment (not attempted — will do after build verification)
+- Vercel deploy (needs env vars set first — Supabase + LemonSqueezy)
+- Supabase table creation (need to run migration SQL)
+- LemonSqueezy product creation (manual step in their dashboard)
+- End-to-end payment flow testing
 
 **Bugs found:**
-- `next build` hangs when system has 50+ Node processes — need to restart machine or kill processes first
-- Build passes when system has adequate resources (TypeScript compiles cleanly)
+- None — clean build
 
 **Decisions made:**
-- Use Alpha Vantage free tier for market data (25 req/day)
-- JSON file storage for MVP (no database)
-- Skip Stripe for beta launch
-- Claude claude-sonnet-4-5-20250514 for brief generation
-- Star rating system for brief feedback
-- Archive page with full brief detail view
+- LemonSqueezy over Stripe (simpler for digital subscriptions, handles tax automatically)
+- $9/mo Pro plan pricing
+- 20 sector pages for SEO (not 10) — more long-tail keyword coverage
+- Archive gating: free users see last 3 briefs, pro users get full access
 
 ---
 
 ## Next Session Plan
-**Goal:** Build verification, Vercel deployment, end-to-end testing with live data
-**Prompt to use:** "Restart machine (or kill stale Node processes), run `npm run build`, fix any issues, deploy to Vercel, test with real Alpha Vantage API key"
-**Prerequisites:** Restart machine to free memory, get free Alpha Vantage API key
-**Watch out for:** Build may fail on first try due to stale .next cache — delete .next folder first
+**Goal:** Set up LemonSqueezy product, create Supabase tables, deploy to Vercel, test payment flow end-to-end
+**Prerequisites:**
+1. Create LemonSqueezy account and $9/mo Pro product
+2. Run `supabase/migrations/001_initial.sql` on the database
+3. Set all new env vars in Vercel
+**Prompt to use:** "Deploy AI Finance Brief with new env vars, test LemonSqueezy checkout flow, verify Supabase is storing data correctly"
 
 ---
 
@@ -101,6 +122,10 @@
 | 2026-02-11 | Daily brief caching | Avoid unnecessary Claude API calls, one brief per day | Redis, in-memory |
 | 2026-02-11 | Skip Stripe for beta | Launch faster, validate demand first | Build payments now |
 | 2026-02-11 | Star rating for briefs | Simple feedback loop, helps improve content | Thumbs up/down, NPS score |
+| 2026-02-15 | Supabase for storage | Persistent, scalable, already have project set up | Keep JSON files |
+| 2026-02-15 | LemonSqueezy for payments | Handles tax, simpler than Stripe for SaaS | Stripe, Paddle |
+| 2026-02-15 | 20 SEO sector pages | Long-tail keyword coverage, each page targets specific investor searches | 5-10 pages |
+| 2026-02-15 | Free tier = 2 sectors + 3 archive | Give enough value to hook users, gate premium sectors | Fully free, time-limited trial |
 
 ---
 
@@ -108,8 +133,9 @@
 - **OS:** Windows 11 + Git Bash
 - **Node version:** 20+
 - **Deploy target:** Vercel
-- **Database:** None (JSON files for MVP)
-- **Key API keys needed:** ANTHROPIC_API_KEY, ALPHA_VANTAGE_API_KEY, RESEND_API_KEY, NEXTAUTH_SECRET, CRON_SECRET
+- **Database:** Supabase (clawbot-command-center project)
+- **Payments:** LemonSqueezy ($9/mo Pro plan)
+- **Key API keys needed:** ANTHROPIC_API_KEY, ALPHA_VANTAGE_API_KEY, RESEND_API_KEY, NEXTAUTH_SECRET, CRON_SECRET, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_WEBHOOK_SECRET, LEMONSQUEEZY_STORE_ID, LEMONSQUEEZY_VARIANT_ID
 - **Known env quirks:** Use `taskkill //PID` on Windows, `start npm run dev` for persistent dev server, kill stale Node processes before building
 
 ---
@@ -125,3 +151,5 @@
 | 6 | 2026-02-11 | Archive, ratings, dashboard enhancements | ✅ | Archive page, rating system, 6 new brief sections |
 | 7 | 2026-02-11 | TypeScript verification | ✅ | Zero errors, all files compile |
 | 8 | 2026-02-11 | SEO, legal pages, meta tags | ✅ | Terms, privacy, sitemap, robots.txt, OG tags |
+| 9 | 2026-02-14 | Deployment verified | ✅ | Live at ai-finance-brief.vercel.app, STATUS.md updated |
+| 10 | 2026-02-15 | Revenue-ready upgrade | ✅ | Supabase migration, LemonSqueezy, feature gating, 20 SEO pages |

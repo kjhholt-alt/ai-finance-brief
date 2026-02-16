@@ -1,14 +1,11 @@
 /**
  * Daily brief generation pipeline
- * Fetches market data → sends to Claude API → returns structured brief
+ * Fetches market data -> sends to Claude API -> returns structured brief
  */
 
 import { getAnthropic } from "@/lib/anthropic";
 import { getAllMarketData } from "@/lib/data/market";
-import { promises as fs } from "fs";
-import path from "path";
-
-const CACHE_PATH = path.join(process.cwd(), "data", "brief-cache.json");
+import { createServerSupabase } from "@/lib/supabase";
 
 export interface TopMover {
   ticker: string;
@@ -45,28 +42,33 @@ export interface BriefData {
   summary: string;
 }
 
-interface CachedBrief {
-  date: string;
-  brief: BriefData;
-}
-
-async function getCachedBrief(): Promise<CachedBrief | null> {
+async function getCachedBrief(): Promise<{ date: string; brief: BriefData } | null> {
   try {
-    const data = await fs.readFile(CACHE_PATH, "utf-8");
-    const cached: CachedBrief = JSON.parse(data);
+    const supabase = createServerSupabase();
     const today = new Date().toISOString().split("T")[0];
-    if (cached.date === today) return cached;
-    return null;
+    const { data, error } = await supabase
+      .from("briefs")
+      .select("date, content")
+      .eq("date", today)
+      .single();
+
+    if (error || !data) return null;
+    return { date: data.date, brief: data.content as BriefData };
   } catch {
     return null;
   }
 }
 
 async function saveBriefCache(brief: BriefData): Promise<void> {
-  const dir = path.dirname(CACHE_PATH);
-  await fs.mkdir(dir, { recursive: true });
-  const today = new Date().toISOString().split("T")[0];
-  await fs.writeFile(CACHE_PATH, JSON.stringify({ date: today, brief }, null, 2));
+  try {
+    const supabase = createServerSupabase();
+    const today = new Date().toISOString().split("T")[0];
+    await supabase
+      .from("briefs")
+      .upsert({ date: today, content: brief }, { onConflict: "date" });
+  } catch (err) {
+    console.error("Failed to cache brief in Supabase:", err);
+  }
 }
 
 export async function generateDailyBrief(forceRefresh = false): Promise<BriefData> {
@@ -179,24 +181,31 @@ RULES:
   return brief;
 }
 
-// Get a brief for a specific date from the archive
+// Get a brief for a specific date from Supabase
 export async function getBriefByDate(date: string): Promise<BriefData | null> {
-  const archivePath = path.join(process.cwd(), "data", "briefs", `${date}.json`);
   try {
-    const data = await fs.readFile(archivePath, "utf-8");
-    return JSON.parse(data);
+    const supabase = createServerSupabase();
+    const { data, error } = await supabase
+      .from("briefs")
+      .select("content")
+      .eq("date", date)
+      .single();
+
+    if (error || !data) return null;
+    return data.content as BriefData;
   } catch {
-    // Check if it's today's brief in the cache
-    const cached = await getCachedBrief();
-    if (cached && cached.date === date) return cached.brief;
     return null;
   }
 }
 
 // Save a brief to the archive (called after generation)
 export async function archiveBrief(brief: BriefData): Promise<void> {
-  const archiveDir = path.join(process.cwd(), "data", "briefs");
-  await fs.mkdir(archiveDir, { recursive: true });
-  const archivePath = path.join(archiveDir, `${brief.date}.json`);
-  await fs.writeFile(archivePath, JSON.stringify(brief, null, 2));
+  try {
+    const supabase = createServerSupabase();
+    await supabase
+      .from("briefs")
+      .upsert({ date: brief.date, content: brief }, { onConflict: "date" });
+  } catch (err) {
+    console.error("Failed to archive brief:", err);
+  }
 }

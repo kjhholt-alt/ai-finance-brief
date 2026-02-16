@@ -1,9 +1,10 @@
 import { MetadataRoute } from "next";
+import { getAllSectorSlugs } from "@/lib/seo/sectors";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXTAUTH_URL || "https://aifinancebrief.com";
 
-  return [
+  const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: new Date(),
@@ -41,4 +42,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
   ];
+
+  // Programmatic SEO sector pages
+  const sectorPages: MetadataRoute.Sitemap = getAllSectorSlugs().map((slug) => ({
+    url: `${baseUrl}/briefs/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  return [...staticPages, ...sectorPages];
 }

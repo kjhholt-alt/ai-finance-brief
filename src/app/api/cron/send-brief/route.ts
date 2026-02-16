@@ -1,22 +1,13 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { getResend } from "@/lib/resend";
 import { generateBriefEmailHtml } from "@/lib/email-template";
+import { createServerSupabase } from "@/lib/supabase";
 
 // This route is called by Vercel Cron at 7am ET on market days
 // Configured in vercel.json
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Allow up to 60s for brief generation + email sends
-
-const WAITLIST_PATH = path.join(process.cwd(), "data", "waitlist.json");
-const BRIEF_CACHE_PATH = path.join(process.cwd(), "data", "brief-cache.json");
-
-interface WaitlistEntry {
-  email: string;
-  joinedAt: string;
-}
 
 // Verify the request comes from Vercel Cron (or allow in dev)
 function isAuthorized(request: Request): boolean {
@@ -58,33 +49,15 @@ export async function GET(request: Request) {
 
     const brief = await briefResponse.json();
 
-    // Also save to cache
-    const cacheDir = path.dirname(BRIEF_CACHE_PATH);
-    await fs.mkdir(cacheDir, { recursive: true });
-    await fs.writeFile(
-      BRIEF_CACHE_PATH,
-      JSON.stringify(
-        { date: new Date().toISOString().split("T")[0], brief },
-        null,
-        2
-      )
-    );
+    // 3. Get all subscribers from Supabase
+    const supabase = createServerSupabase();
+    const { data: subscribers, error } = await supabase
+      .from("waitlist")
+      .select("email");
 
-    // 3. Get all subscribers
-    let subscribers: WaitlistEntry[] = [];
-    try {
-      const data = await fs.readFile(WAITLIST_PATH, "utf-8");
-      subscribers = JSON.parse(data);
-    } catch {
+    if (error || !subscribers || subscribers.length === 0) {
       return NextResponse.json({
         message: "No subscribers found",
-        sent: 0,
-      });
-    }
-
-    if (subscribers.length === 0) {
-      return NextResponse.json({
-        message: "No subscribers to email",
         sent: 0,
       });
     }
@@ -111,7 +84,7 @@ export async function GET(request: Request) {
           .send({
             from: "AI Finance Brief <brief@updates.aifinancebrief.com>",
             to: sub.email,
-            subject: `📊 Your Market Brief — ${today}`,
+            subject: `Your Market Brief - ${today}`,
             html,
           })
           .then(() => {

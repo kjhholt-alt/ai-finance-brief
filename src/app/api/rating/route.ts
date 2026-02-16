@@ -1,37 +1,12 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
+import { createServerSupabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
-
-const RATINGS_PATH = path.join(process.cwd(), "data", "ratings.json");
-
-interface Rating {
-  date: string;
-  rating: number; // 1-5
-  feedback?: string;
-  createdAt: string;
-}
-
-async function getRatings(): Promise<Rating[]> {
-  try {
-    const data = await fs.readFile(RATINGS_PATH, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-async function saveRatings(ratings: Rating[]): Promise<void> {
-  const dir = path.dirname(RATINGS_PATH);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(RATINGS_PATH, JSON.stringify(ratings, null, 2));
-}
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { date, rating, feedback } = body;
+    const { date, rating, feedback, userId } = body;
 
     if (!date || !rating || rating < 1 || rating > 5) {
       return NextResponse.json(
@@ -40,24 +15,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const ratings = await getRatings();
+    const supabase = createServerSupabase();
 
-    // Update or create rating for this date
-    const existingIndex = ratings.findIndex((r) => r.date === date);
-    const ratingEntry: Rating = {
-      date,
-      rating: Math.round(rating),
-      feedback: feedback || undefined,
-      createdAt: new Date().toISOString(),
-    };
+    // Check for existing rating by user + date
+    if (userId) {
+      const { data: existing } = await supabase
+        .from("ratings")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("brief_date", date)
+        .single();
 
-    if (existingIndex >= 0) {
-      ratings[existingIndex] = ratingEntry;
+      if (existing) {
+        await supabase
+          .from("ratings")
+          .update({
+            rating: Math.round(rating),
+            feedback: feedback || null,
+            created_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+      } else {
+        await supabase.from("ratings").insert({
+          user_id: userId || null,
+          brief_date: date,
+          rating: Math.round(rating),
+          feedback: feedback || null,
+        });
+      }
     } else {
-      ratings.push(ratingEntry);
+      await supabase.from("ratings").insert({
+        user_id: null,
+        brief_date: date,
+        rating: Math.round(rating),
+        feedback: feedback || null,
+      });
     }
-
-    await saveRatings(ratings);
 
     return NextResponse.json({ success: true });
   } catch {
@@ -70,16 +63,30 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const ratings = await getRatings();
+    const supabase = createServerSupabase();
+    const { data: ratings, error } = await supabase
+      .from("ratings")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    if (error) {
+      return NextResponse.json(
+        { error: "Failed to fetch ratings" },
+        { status: 500 }
+      );
+    }
+
+    const allRatings = ratings || [];
     const avgRating =
-      ratings.length > 0
-        ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+      allRatings.length > 0
+        ? allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
         : 0;
 
     return NextResponse.json({
-      totalRatings: ratings.length,
+      totalRatings: allRatings.length,
       averageRating: Math.round(avgRating * 10) / 10,
-      ratings: ratings.slice(-30), // Last 30 ratings
+      ratings: allRatings,
     });
   } catch {
     return NextResponse.json(

@@ -1,28 +1,5 @@
 import { NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
-
-const WAITLIST_PATH = path.join(process.cwd(), "data", "waitlist.json");
-
-interface WaitlistEntry {
-  email: string;
-  joinedAt: string;
-}
-
-async function getWaitlist(): Promise<WaitlistEntry[]> {
-  try {
-    const data = await fs.readFile(WAITLIST_PATH, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-async function saveWaitlist(entries: WaitlistEntry[]): Promise<void> {
-  const dir = path.dirname(WAITLIST_PATH);
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(WAITLIST_PATH, JSON.stringify(entries, null, 2));
-}
+import { createServerSupabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   try {
@@ -44,21 +21,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const waitlist = await getWaitlist();
+    const supabase = createServerSupabase();
 
-    if (waitlist.some((entry) => entry.email === email.toLowerCase())) {
+    // Check if already on waitlist
+    const { data: existing } = await supabase
+      .from("waitlist")
+      .select("id")
+      .eq("email", email.toLowerCase())
+      .single();
+
+    if (existing) {
       return NextResponse.json(
         { error: "This email is already on the waitlist" },
         { status: 409 }
       );
     }
 
-    waitlist.push({
+    const { error } = await supabase.from("waitlist").insert({
       email: email.toLowerCase(),
-      joinedAt: new Date().toISOString(),
     });
 
-    await saveWaitlist(waitlist);
+    if (error) {
+      // Handle unique constraint violation
+      if (error.code === "23505") {
+        return NextResponse.json(
+          { error: "This email is already on the waitlist" },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json(
       { message: "Successfully joined the waitlist!" },

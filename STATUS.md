@@ -3,9 +3,9 @@
 
 ## Quick Status
 - **Project:** AI Finance Brief
-- **Current session:** 10 (revenue-ready upgrade)
-- **Last updated:** 2026-02-15
-- **Overall health:** 🟢 BUILD PASSES — ready for deploy after env vars set
+- **Current session:** 11 (real market data pipeline)
+- **Last updated:** 2026-02-16
+- **Overall health:** 🟢 PRODUCTION LIVE — real market data flowing
 
 ---
 
@@ -16,8 +16,8 @@
 - Auth system (NextAuth v5 credentials provider for MVP)
 - Sign-in page
 - Dashboard page (market pulse, top movers, sector spotlight, non-obvious take, sector performance grid, thing to watch, today's calendar, outlook, data sources, rating widget)
-- Brief generation engine (Claude API + Alpha Vantage market data + mock fallbacks) — **now cached in Supabase**
-- Market data module (SPY/QQQ/DIA quotes, top gainers/losers, pre-market data with fallbacks) — **now stored in Supabase**
+- Brief generation engine (Claude API + FMP real market data) — **cached in Supabase, 5 live data sources**
+- Market data module (FMP stable API: SPY quotes, gainers/losers, sector performance, VIX, Treasury yields) — **replaced Alpha Vantage**
 - Daily caching via Supabase `briefs` table (replaces JSON files)
 - Brief archiving via Supabase (replaces data/briefs/ directory)
 - Archive page (browse past briefs, click to view full brief detail) — **Pro users get full archive, free users see last 3**
@@ -62,35 +62,32 @@
 - Email delivery untested (needs real Resend API key in .env.local)
 - Alpha Vantage API key set to "demo" (limited to sample data — get a free key at alphavantage.co)
 - No real-world testing with live market data
-- **Supabase tables need to be created** — run `supabase/migrations/001_initial.sql` against the database
+- **Resend API key is placeholder** — email cron will fail until real key is set
 - **LemonSqueezy product/variant needs creation** — set LEMONSQUEEZY_VARIANT_ID after creating the $9/mo product
-- **New env vars needed in Vercel:**
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY`
-  - `LEMONSQUEEZY_API_KEY`
-  - `LEMONSQUEEZY_WEBHOOK_SECRET`
-  - `LEMONSQUEEZY_STORE_ID`
-  - `LEMONSQUEEZY_VARIANT_ID`
+- **FMP free tier limits** — QQQ, DIA, GLD, USO quotes return 402 (premium). Only SPY works for indices.
+- **Economic calendar** — premium on FMP free tier, skipped gracefully
 
 ---
 
 ## Last Session Summary
-**Date:** 2026-02-15
-**Goal:** Revenue-ready upgrade (Supabase migration, payments, feature gating, SEO pages)
+**Date:** 2026-02-16
+**Goal:** Fix market data pipeline — replace Alpha Vantage with real data
 **What got done:**
-- Phase 1: Migrated all JSON file storage to Supabase (briefs, ratings, waitlist, preferences, market snapshots)
-- Phase 2: LemonSqueezy payment integration (checkout API, webhook handler, subscription helper)
-- Phase 3: Feature gating system (free/pro tiers, UpgradeCTA component, tier-aware pages)
-- Phase 4: 20 programmatic SEO sector landing pages with full metadata
-- TypeScript compiles with zero errors
-- `next build` passes with all new routes
+- Replaced Alpha Vantage with FMP (Financial Modeling Prep) stable API
+- 5 live data sources working: indices (SPY), movers, sectors, VIX, Treasury yields
+- Created all 7 Supabase tables via migration SQL
+- Hardened brief generator with per-source error handling and structured prompts
+- Updated Anthropic SDK 0.39.0 -> 0.74.0 (fixed "Connection error" on Vercel)
+- Added maxDuration=60 to brief API route for Vercel
+- Added FMP_API_KEY to Vercel production env
+- Removed ALPHA_VANTAGE_API_KEY from Vercel
+- Added kjh.holt@gmail.com to email distribution list
+- Production verified at https://ai-finance-brief.vercel.app/api/brief
 
 **What didn't get done (and why):**
-- Vercel deploy (needs env vars set first — Supabase + LemonSqueezy)
-- Supabase table creation (need to run migration SQL)
-- LemonSqueezy product creation (manual step in their dashboard)
-- End-to-end payment flow testing
+- Email delivery (Resend API key still placeholder)
+- LemonSqueezy product creation (manual step)
+- Commodities data (FMP commodity symbols are premium, ETF proxies also premium)
 
 **Bugs found:**
 - None — clean build
@@ -104,12 +101,21 @@
 ---
 
 ## Next Session Plan
-**Goal:** Set up LemonSqueezy product, create Supabase tables, deploy to Vercel, test payment flow end-to-end
+**Goal:** Set up Resend email delivery, test morning email cron, LemonSqueezy payment flow
 **Prerequisites:**
-1. Create LemonSqueezy account and $9/mo Pro product
-2. Run `supabase/migrations/001_initial.sql` on the database
-3. Set all new env vars in Vercel
-**Prompt to use:** "Deploy AI Finance Brief with new env vars, test LemonSqueezy checkout flow, verify Supabase is storing data correctly"
+1. Set real RESEND_API_KEY in `.env.local` and Vercel (get from https://resend.com/api-keys)
+2. Verify domain for Resend (updates.aifinancebrief.com or similar)
+3. Create LemonSqueezy account and $9/mo Pro product
+**What's already done:**
+- Supabase tables created and verified (all 7 tables)
+- FMP market data pipeline live (5 sources: indices, movers, sectors, VIX, treasury)
+- kjh.holt@gmail.com added to waitlist/distribution list
+- Cron configured: 7am ET Mon-Fri for email, 7:30am ET for Twitter
+**FMP free tier limits (known):**
+- Single-symbol quotes only (no batch) — SPY works, QQQ/DIA/GLD/USO return 402
+- Economic calendar is premium
+- Commodity symbols (GCUSD, CLUSD) are premium
+- Sectors work with date parameter (uses last business day)
 
 ---
 
@@ -126,6 +132,7 @@
 | 2026-02-15 | LemonSqueezy for payments | Handles tax, simpler than Stripe for SaaS | Stripe, Paddle |
 | 2026-02-15 | 20 SEO sector pages | Long-tail keyword coverage, each page targets specific investor searches | 5-10 pages |
 | 2026-02-15 | Free tier = 2 sectors + 3 archive | Give enough value to hook users, gate premium sectors | Fully free, time-limited trial |
+| 2026-02-16 | FMP over Alpha Vantage | 250 req/day free, real-time quotes, sectors, treasury. AV demo key returned nothing. | Yahoo Finance (unofficial), Polygon.io |
 
 ---
 
@@ -135,7 +142,7 @@
 - **Deploy target:** Vercel
 - **Database:** Supabase (clawbot-command-center project)
 - **Payments:** LemonSqueezy ($9/mo Pro plan)
-- **Key API keys needed:** ANTHROPIC_API_KEY, ALPHA_VANTAGE_API_KEY, RESEND_API_KEY, NEXTAUTH_SECRET, CRON_SECRET, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_WEBHOOK_SECRET, LEMONSQUEEZY_STORE_ID, LEMONSQUEEZY_VARIANT_ID
+- **Key API keys needed:** ANTHROPIC_API_KEY, FMP_API_KEY, RESEND_API_KEY, NEXTAUTH_SECRET, CRON_SECRET, NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_WEBHOOK_SECRET, LEMONSQUEEZY_STORE_ID, LEMONSQUEEZY_VARIANT_ID
 - **Known env quirks:** Use `taskkill //PID` on Windows, `start npm run dev` for persistent dev server, kill stale Node processes before building
 
 ---
@@ -153,3 +160,4 @@
 | 8 | 2026-02-11 | SEO, legal pages, meta tags | ✅ | Terms, privacy, sitemap, robots.txt, OG tags |
 | 9 | 2026-02-14 | Deployment verified | ✅ | Live at ai-finance-brief.vercel.app, STATUS.md updated |
 | 10 | 2026-02-15 | Revenue-ready upgrade | ✅ | Supabase migration, LemonSqueezy, feature gating, 20 SEO pages |
+| 11 | 2026-02-16 | Real market data pipeline | ✅ | Replaced Alpha Vantage with FMP, 5 live data sources, Supabase tables created, Anthropic SDK updated, production verified |

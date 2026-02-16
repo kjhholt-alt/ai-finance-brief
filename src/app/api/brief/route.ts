@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       nonObviousTake: "",
       todayCalendar: [],
       dataSourcesUsed: ["fallback"],
-      _error: errorMsg,
+      _error: process.env.NODE_ENV === "development" ? errorMsg : undefined,
     });
   }
 }

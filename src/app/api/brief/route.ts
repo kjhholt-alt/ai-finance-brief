@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateDailyBrief, archiveBrief } from "@/lib/brief/generator";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 // Rate limiting: simple in-memory store (resets on server restart)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json(brief);
   } catch (error) {
-    console.error("Brief generation error:", error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("Brief generation error:", errorMsg, error);
 
     // Return a fallback brief so the UI isn't blank
     return NextResponse.json({
@@ -58,6 +60,7 @@ export async function POST(request: Request) {
       nonObviousTake: "",
       todayCalendar: [],
       dataSourcesUsed: ["fallback"],
+      _error: errorMsg,
     });
   }
 }

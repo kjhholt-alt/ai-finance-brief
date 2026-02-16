@@ -1,10 +1,10 @@
 /**
  * Daily brief generation pipeline
- * Fetches market data -> sends to Claude API -> returns structured brief
+ * Fetches market data from FMP -> sends to Claude API -> returns structured brief
  */
 
 import { getAnthropic } from "@/lib/anthropic";
-import { getAllMarketData } from "@/lib/data/market";
+import { getAllMarketData, type AllMarketData } from "@/lib/data/market";
 import { createServerSupabase } from "@/lib/supabase";
 
 export interface TopMover {
@@ -71,32 +71,74 @@ async function saveBriefCache(brief: BriefData): Promise<void> {
   }
 }
 
-export async function generateDailyBrief(forceRefresh = false): Promise<BriefData> {
-  // Check cache first (one brief per day)
-  if (!forceRefresh) {
-    const cached = await getCachedBrief();
-    if (cached) return cached.brief;
+function buildPrompt(marketData: AllMarketData): string {
+  // Build structured, labeled sections so Claude gets clean data
+  const sections: string[] = [];
+
+  // Indices
+  if (marketData.overview.indices.length > 0) {
+    sections.push(`=== MAJOR INDICES ===
+${marketData.overview.indices.map((i) => `${i.name} (${i.symbol}): $${i.price.toFixed(2)} | Change: ${i.change >= 0 ? "+" : ""}${i.change.toFixed(2)} (${i.changePercent >= 0 ? "+" : ""}${i.changePercent.toFixed(2)}%)`).join("\n")}`);
   }
 
-  // Step 1: Fetch all market data in parallel
-  const marketData = await getAllMarketData();
-  const dataSourcesUsed: string[] = [];
+  // Top movers
+  if (marketData.movers.gainers.length > 0 || marketData.movers.losers.length > 0) {
+    const gainerLines = marketData.movers.gainers.map((m) => `  ${m.ticker} (${m.name}): $${m.price.toFixed(2)} | +${m.changePercent.toFixed(2)}%`);
+    const loserLines = marketData.movers.losers.map((m) => `  ${m.ticker} (${m.name}): $${m.price.toFixed(2)} | ${m.changePercent.toFixed(2)}%`);
+    sections.push(`=== TOP MOVERS ===
+Gainers:
+${gainerLines.join("\n")}
+Losers:
+${loserLines.join("\n")}`);
+  }
 
-  // Track which data sources returned real data
-  if (marketData.overview.indices.length > 0) dataSourcesUsed.push("alpha_vantage_quotes");
-  if (marketData.movers.gainers.length > 0) dataSourcesUsed.push("alpha_vantage_movers");
-  dataSourcesUsed.push("mock_premarket"); // Always mock for now
+  // Sector performance
+  if (marketData.sectors.length > 0) {
+    sections.push(`=== SECTOR PERFORMANCE ===
+${marketData.sectors.map((s) => `${s.sector}: ${s.changesPercentage}`).join("\n")}`);
+  }
 
-  // Step 2: Build the prompt with real data
-  const prompt = `You are the chief market strategist at a top-tier investment bank, writing a morning brief for your firm's trading desk and portfolio managers. This brief is known for being the most concise, insightful, and actionable morning read on Wall Street.
+  // Commodities
+  if (marketData.commodities.length > 0) {
+    sections.push(`=== COMMODITIES ===
+${marketData.commodities.map((c) => `${c.name}: $${c.price.toFixed(2)} | Change: ${c.change >= 0 ? "+" : ""}${c.change.toFixed(2)} (${c.changePercent >= 0 ? "+" : ""}${c.changePercent.toFixed(2)}%)`).join("\n")}`);
+  }
 
-MARKET DATA (use this as your primary source):
-${JSON.stringify(marketData, null, 2)}
+  // VIX
+  if (marketData.vix) {
+    sections.push(`=== VIX (FEAR INDEX) ===
+VIX: ${marketData.vix.value.toFixed(2)} | Change: ${marketData.vix.change >= 0 ? "+" : ""}${marketData.vix.change.toFixed(2)} (${marketData.vix.changePercent >= 0 ? "+" : ""}${marketData.vix.changePercent.toFixed(2)}%)`);
+  }
+
+  // Treasury yields
+  if (marketData.treasuryYields.length > 0) {
+    sections.push(`=== TREASURY YIELDS ===
+${marketData.treasuryYields.map((t) => `${t.name}: ${t.value.toFixed(2)}% (as of ${t.date})`).join("\n")}`);
+  }
+
+  // Economic calendar
+  if (marketData.economicCalendar.length > 0) {
+    sections.push(`=== ECONOMIC CALENDAR (TODAY) ===
+${marketData.economicCalendar.map((e) => `${e.event} | Estimate: ${e.estimate || "N/A"} | Actual: ${e.actual || "pending"}`).join("\n")}`);
+  }
+
+  const dataBlock = sections.length > 0
+    ? sections.join("\n\n")
+    : "No market data available — generate a brief noting data unavailability.";
+
+  return `You are the chief market strategist at a top-tier investment bank, writing a morning brief for your firm's trading desk and portfolio managers. This brief is known for being the most concise, insightful, and actionable morning read on Wall Street.
+
+TODAY'S DATE: ${new Date().toISOString().split("T")[0]}
+DATA SOURCES AVAILABLE: ${marketData.sourcesSucceeded.join(", ") || "none"}
+DATA SOURCES FAILED: ${marketData.sourcesFailed.join(", ") || "none"}
+
+LIVE MARKET DATA:
+${dataBlock}
 
 STRUCTURE (follow exactly — output as JSON):
 
 {
-  "marketPulse": "One paragraph, 3-4 sentences. What happened and where markets stand. Include S&P, Nasdaq, Dow with exact numbers. Treasury yields. Be specific with numbers.",
+  "marketPulse": "One paragraph, 3-4 sentences. What happened and where markets stand. Include S&P, Nasdaq, Dow with exact numbers. Treasury yields if available. Be specific with numbers.",
 
   "topMovers": [
     {
@@ -133,7 +175,8 @@ STRUCTURE (follow exactly — output as JSON):
 }
 
 RULES:
-- Use ONLY the data provided. Don't invent numbers.
+- Use ONLY the data provided above. Don't invent numbers.
+- If a data source failed, acknowledge the gap but still write the best brief you can with available data.
 - Be concise — entire brief should be a 2-minute read (~400 words)
 - Lead with what matters most
 - Use specific numbers always (%, $, bps)
@@ -141,11 +184,32 @@ RULES:
 - No disclaimers or "not financial advice"
 - No emojis
 - Return ONLY valid JSON, no markdown or code blocks`;
+}
+
+export async function generateDailyBrief(forceRefresh = false): Promise<BriefData> {
+  // Check cache first (one brief per day)
+  if (!forceRefresh) {
+    const cached = await getCachedBrief();
+    if (cached) return cached.brief;
+  }
+
+  // Step 1: Fetch all market data in parallel (each source has its own try/catch)
+  const marketData = await getAllMarketData();
+
+  // At least one source must have returned data
+  const hasAnyData = marketData.sourcesSucceeded.length > 0;
+
+  if (!hasAnyData) {
+    console.warn("All market data sources failed — brief will note data unavailability");
+  }
+
+  // Step 2: Build structured prompt with labeled sections
+  const prompt = buildPrompt(marketData);
 
   // Step 3: Call Claude API
   const anthropic = getAnthropic();
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250514",
+    model: "claude-sonnet-4-5-20250929",
     max_tokens: 2000,
     messages: [{ role: "user", content: prompt }],
   });
@@ -155,8 +219,13 @@ RULES:
     throw new Error("Unexpected response type from Claude");
   }
 
-  // Step 4: Parse and structure
-  const parsed = JSON.parse(content.text);
+  // Step 4: Parse and structure — strip markdown fences if Claude adds them
+  let jsonText = content.text.trim();
+  if (jsonText.startsWith("```")) {
+    jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  }
+
+  const parsed = JSON.parse(jsonText);
   const today = new Date().toISOString().split("T")[0];
 
   const brief: BriefData = {
@@ -170,13 +239,15 @@ RULES:
     todayCalendar: parsed.todayCalendar || [],
     sectorPerformance: parsed.sectorPerformance || [],
     outlook: parsed.outlook || "",
-    dataSourcesUsed,
+    dataSourcesUsed: marketData.sourcesSucceeded,
     // Legacy compat
     summary: parsed.marketPulse || "",
   };
 
-  // Step 5: Cache the result
-  await saveBriefCache(brief);
+  // Step 5: Cache the result (non-blocking — don't let cache failure kill the brief)
+  saveBriefCache(brief).catch((err) => {
+    console.error("Brief cache save failed (non-blocking):", err);
+  });
 
   return brief;
 }

@@ -15,7 +15,17 @@ import Anthropic from "@anthropic-ai/sdk";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+// Vercel cron sends GET requests
+export async function GET(request: Request) {
+  return handleCron(request);
+}
+
+// Manual triggers can use POST
 export async function POST(request: Request) {
+  return handleCron(request);
+}
+
+async function handleCron(request: Request) {
   // Auth check
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;

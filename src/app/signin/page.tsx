@@ -14,12 +14,14 @@ import {
   Loader2,
   CheckCircle2,
   ArrowLeft,
+  Github,
 } from "lucide-react";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [githubLoading, setGithubLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +37,11 @@ export default function SignInPage() {
       }, 1500);
     }
     setLoading(false);
+  }
+
+  async function handleGitHubSignIn() {
+    setGithubLoading(true);
+    await signIn("github", { callbackUrl: "/dashboard" });
   }
 
   return (
@@ -98,6 +105,35 @@ export default function SignInPage() {
             >
               <Card className="glass border-white/[0.06] bg-white/[0.02]">
                 <CardContent className="p-8">
+                  <div className="mb-5">
+                    <Button
+                      type="button"
+                      onClick={handleGitHubSignIn}
+                      disabled={githubLoading}
+                      className="w-full h-12 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-foreground transition-all"
+                    >
+                      {githubLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Github className="w-5 h-5 mr-2" />
+                          Sign in with GitHub
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="relative mb-5">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-white/[0.08]" />
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="px-3 bg-background text-muted-foreground">
+                        or continue with email
+                      </span>
+                    </div>
+                  </div>
+
                   <form onSubmit={handleSubmit}>
                     <label
                       htmlFor="email"

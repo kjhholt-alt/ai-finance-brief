@@ -330,6 +330,49 @@ export default function Home() {
       </section>
 
       {/* ============================================================ */}
+      {/*  SOCIAL PROOF                                                 */}
+      {/* ============================================================ */}
+      <section className="py-12 border-t border-white/[0.04]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {[...Array(4)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-8 h-8 rounded-full border-2 border-background bg-gradient-to-br from-indigo-400 to-purple-500"
+                    style={{ opacity: 1 - i * 0.15 }}
+                  />
+                ))}
+              </div>
+              <div>
+                <span className="text-lg font-bold text-foreground font-mono">
+                  {subscriberCount !== null ? `${subscriberCount}+` : "50+"}
+                </span>
+                <p className="text-xs text-muted-foreground">beta investors</p>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-white/[0.08] hidden sm:block" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span>Delivering briefs every market morning</span>
+            </div>
+            <div className="w-px h-8 bg-white/[0.08] hidden sm:block" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <BarChart3 className="w-4 h-4 text-indigo-400" />
+              <span>50+ sources analyzed daily</span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
       {/*  HOW IT WORKS                                                 */}
       {/* ============================================================ */}
       <section id="features" className="py-24 sm:py-32 border-t border-white/[0.04]">

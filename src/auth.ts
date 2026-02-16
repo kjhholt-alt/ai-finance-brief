@@ -1,13 +1,16 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import GitHub from "next-auth/providers/github";
 
 // MVP: Using Credentials provider for simplicity (no database required).
-// For production, swap to Resend provider with a database adapter:
-//   import Resend from "next-auth/providers/resend";
-//   providers: [Resend({ from: "AI Finance Brief <onboarding@resend.dev>" })]
+// GitHub OAuth added as an additional sign-in option.
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
+    GitHub({
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET,
+    }),
     Credentials({
       name: "Email",
       credentials: {

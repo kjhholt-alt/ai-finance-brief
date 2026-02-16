@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -199,6 +199,15 @@ function ProCheckoutButton() {
 }
 
 export default function Home() {
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/waitlist")
+      .then((res) => res.json())
+      .then((data) => setSubscriberCount(data.count))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="relative">
       {/* Bloomberg-style dot grid background */}
@@ -728,7 +737,11 @@ export default function Home() {
 
                   <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground/60 mb-8">
                     <Users className="w-4 h-4" />
-                    <span>Join 200+ investors already signed up</span>
+                    <span>
+                      {subscriberCount !== null
+                        ? `Join ${subscriberCount.toLocaleString()}+ investors already signed up`
+                        : "Join investors already signed up"}
+                    </span>
                   </div>
 
                   <div className="flex justify-center">

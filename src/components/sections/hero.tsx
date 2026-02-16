@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { WaitlistForm } from "@/components/waitlist-form";
@@ -13,6 +14,20 @@ const stats = [
 ];
 
 export function HeroSection() {
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/waitlist")
+      .then((res) => res.json())
+      .then((data) => setSubscriberCount(data.count))
+      .catch(() => {});
+  }, []);
+
+  const countText =
+    subscriberCount !== null
+      ? `Join ${subscriberCount.toLocaleString()}+ investors on the waitlist. Free during beta.`
+      : "Free during beta. No credit card required.";
+
   return (
     <section className="relative overflow-hidden pt-20 pb-24 sm:pt-28 sm:pb-32">
       {/* Extra glow behind hero */}
@@ -62,9 +77,7 @@ export function HeroSection() {
             className="flex flex-col items-center gap-4"
           >
             <WaitlistForm />
-            <p className="text-muted-foreground/60 text-sm">
-              Join 500+ investors on the waitlist. Free during beta.
-            </p>
+            <p className="text-muted-foreground/60 text-sm">{countText}</p>
           </motion.div>
         </div>
 

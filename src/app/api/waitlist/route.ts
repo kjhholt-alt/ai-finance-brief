@@ -1,5 +1,24 @@
 import { NextResponse } from "next/server";
 import { createServerSupabase } from "@/lib/supabase";
+import { notifyNewSubscriber } from "@/lib/discord";
+
+export async function GET() {
+  try {
+    const supabase = createServerSupabase();
+    const { count, error } = await supabase
+      .from("waitlist")
+      .select("*", { count: "exact", head: true });
+
+    if (error) throw error;
+
+    return NextResponse.json({ count: count ?? 0 });
+  } catch {
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -51,6 +70,13 @@ export async function POST(request: Request) {
       }
       throw error;
     }
+
+    // Get total count and send Discord alert (non-blocking)
+    const { count } = await supabase
+      .from("waitlist")
+      .select("*", { count: "exact", head: true });
+
+    notifyNewSubscriber(email.toLowerCase(), count ?? 0).catch(() => {});
 
     return NextResponse.json(
       { message: "Successfully joined the waitlist!" },

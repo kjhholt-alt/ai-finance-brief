@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Users,
   Mail,
   Calendar,
-  Lock,
   Loader2,
   Copy,
   Check,
@@ -21,43 +19,21 @@ interface Subscriber {
 }
 
 export default function AdminPage() {
-  const [apiKey, setApiKey] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [count, setCount] = useState(0);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
-  async function fetchSubscribers(key: string) {
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/admin/subscribers", {
-        headers: { Authorization: `Bearer ${key}` },
-      });
-      if (res.status === 401) {
-        setError("Invalid API key");
-        setAuthenticated(false);
-        return;
-      }
-      const data = await res.json();
-      setSubscribers(data.subscribers);
-      setCount(data.count);
-      setAuthenticated(true);
-    } catch {
-      setError("Failed to load subscribers");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (apiKey.trim()) {
-      fetchSubscribers(apiKey.trim());
-    }
-  }
+  useEffect(() => {
+    fetch("/api/admin/subscribers")
+      .then((res) => res.json())
+      .then((data) => {
+        setSubscribers(data.subscribers ?? []);
+        setCount(data.count ?? 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   function copyEmail(email: string, idx: number) {
     navigator.clipboard.writeText(email);
@@ -72,61 +48,10 @@ export default function AdminPage() {
     setTimeout(() => setCopiedIdx(null), 1500);
   }
 
-  // If they refresh after auth, clear state
-  useEffect(() => {
-    const saved = sessionStorage.getItem("admin_key");
-    if (saved) {
-      setApiKey(saved);
-      fetchSubscribers(saved);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (authenticated && apiKey) {
-      sessionStorage.setItem("admin_key", apiKey);
-    }
-  }, [authenticated, apiKey]);
-
-  if (!authenticated) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md glass border-white/[0.06]">
-          <CardHeader className="text-center">
-            <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-3">
-              <Lock className="w-6 h-6 text-indigo-400" />
-            </div>
-            <CardTitle className="text-xl">Admin Access</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Enter your admin API key to view subscribers
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-              <Input
-                type="password"
-                placeholder="Admin API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="bg-white/[0.04] border-white/[0.08]"
-              />
-              {error && (
-                <p className="text-sm text-red-400">{error}</p>
-              )}
-              <Button
-                type="submit"
-                disabled={loading || !apiKey.trim()}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Lock className="w-4 h-4 mr-2" />
-                )}
-                Unlock
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
       </div>
     );
   }

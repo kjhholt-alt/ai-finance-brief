@@ -82,7 +82,7 @@ export async function GET(request: Request) {
       const emailPromises = batch.map((sub) =>
         resend.emails
           .send({
-            from: "AI Finance Brief <brief@updates.aifinancebrief.com>",
+            from: "AI Finance Brief <brief@mail.buildkit.store>",
             to: sub.email,
             subject: `Your Market Brief - ${today}`,
             html,

@@ -5,6 +5,7 @@ import "./globals.css";
 import { Navigation } from "@/components/navigation";
 import { Footer } from "@/components/footer";
 import { AuthProvider } from "@/components/auth-provider";
+import { UTMTracker } from "@/components/utm-tracker";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -67,6 +68,7 @@ export default function RootLayout({
             <Footer />
           </div>
         </AuthProvider>
+        <UTMTracker />
         <Analytics />
       </body>
     </html>

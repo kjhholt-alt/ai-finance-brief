@@ -287,10 +287,10 @@ export default function Home() {
                 asChild
                 className="h-12 px-8 border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] text-muted-foreground hover:text-foreground transition-all text-base"
               >
-                <a href="#preview">
+                <Link href="/sample">
                   See a Sample Brief
                   <ChevronRight className="w-4 h-4 ml-1" />
-                </a>
+                </Link>
               </Button>
             </motion.div>
 

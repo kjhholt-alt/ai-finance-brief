@@ -31,6 +31,12 @@ export default function SignInPage() {
       redirect: false,
     });
     if (result?.ok) {
+      // Also add to waitlist so they receive email briefs
+      fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      }).catch(() => {});
       setSubmitted(true);
       setTimeout(() => {
         window.location.href = "/dashboard";

@@ -20,7 +20,7 @@ interface BriefData {
   outlook: string;
 }
 
-export function generateBriefEmailHtml(brief: BriefData): string {
+export function generateBriefEmailHtml(brief: BriefData, manageUrl?: string): string {
   const moverRows = brief.topMovers
     .map((m) => {
       const color = m.change.startsWith("+") ? "#10b981" : "#ef4444";
@@ -116,7 +116,10 @@ export function generateBriefEmailHtml(brief: BriefData): string {
       </p>
       <p style="color: #475569; font-size: 11px; margin: 8px 0 0;">
         You're receiving this because you signed up at AI Finance Brief.
-      </p>
+      </p>${manageUrl ? `
+      <p style="margin: 12px 0 0;">
+        <a href="${manageUrl}" style="color: #6366f1; font-size: 11px; text-decoration: underline;">Manage Subscriptions</a>
+      </p>` : ""}
     </div>
   </div>
 </body>

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { email, userType, sectors, onboardingCompleted, emailOptIn, timezone, watchlist } = body;
+    const { email, userType, sectors, onboardingCompleted, emailOptIn, timezone, watchlist, subscriptions } = body;
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     const supabase = createServerSupabase();
 
-    const preferences = {
+    const preferences: Record<string, unknown> = {
       userType: userType || "",
       sectors: sectors || [],
       onboardingCompleted: onboardingCompleted || false,
@@ -22,6 +22,11 @@ export async function POST(request: Request) {
       timezone: timezone || "America/New_York",
       watchlist: watchlist || [],
     };
+
+    // Include subscriptions if provided
+    if (subscriptions !== undefined) {
+      preferences.subscriptions = subscriptions;
+    }
 
     // Upsert user preferences
     const { data: existing } = await supabase
@@ -40,6 +45,7 @@ export async function POST(request: Request) {
       if (emailOptIn !== undefined) merged.emailOptIn = emailOptIn;
       if (timezone !== undefined) merged.timezone = timezone;
       if (watchlist !== undefined) merged.watchlist = watchlist;
+      if (subscriptions !== undefined) merged.subscriptions = subscriptions;
 
       await supabase
         .from("user_preferences")
@@ -66,9 +72,27 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get("email");
+
     const supabase = createServerSupabase();
+
+    // If email provided, return that user's preferences
+    if (email) {
+      const { data } = await supabase
+        .from("user_preferences")
+        .select("preferences")
+        .eq("user_id", email)
+        .single();
+
+      return NextResponse.json({
+        preferences: data?.preferences || null,
+      });
+    }
+
+    // Otherwise return count only (existing behavior)
     const { count } = await supabase
       .from("user_preferences")
       .select("*", { count: "exact", head: true });

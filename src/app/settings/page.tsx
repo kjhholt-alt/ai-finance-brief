@@ -2,13 +2,19 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import {
+  SUBSCRIPTION_CATEGORIES,
+  getDefaultSubscriptions,
+  type SubscriptionPreferences,
+} from "@/lib/subscriptions";
 import {
   Settings,
   User,
@@ -62,22 +68,59 @@ export default function SettingsPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState("");
   const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
   const [emailOptIn, setEmailOptIn] = useState(true);
   const [timezone, setTimezone] = useState("America/New_York");
   const [watchlist, setWatchlist] = useState("");
+  const [subscriptions, setSubscriptions] = useState<SubscriptionPreferences>(
+    getDefaultSubscriptions()
+  );
+
+  const loadPreferences = useCallback(async (email: string) => {
+    try {
+      const res = await fetch(`/api/user/preferences?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (data.preferences) {
+        const prefs = data.preferences;
+        if (prefs.userType) setSelectedType(prefs.userType);
+        if (prefs.sectors) setSelectedSectors(prefs.sectors);
+        if (prefs.emailOptIn !== undefined) setEmailOptIn(prefs.emailOptIn);
+        if (prefs.timezone) setTimezone(prefs.timezone);
+        if (prefs.watchlist) setWatchlist(prefs.watchlist.join(", "));
+        if (prefs.subscriptions) {
+          const defaults = getDefaultSubscriptions();
+          setSubscriptions({ ...defaults, ...prefs.subscriptions });
+        }
+      }
+    } catch {
+      // Use defaults on error
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/signin");
     }
-  }, [status, router]);
+    if (status === "authenticated" && session?.user?.email) {
+      loadPreferences(session.user.email);
+    }
+    if (status !== "loading") {
+      setLoading(false);
+    }
+  }, [status, session, router, loadPreferences]);
 
   const toggleSector = (id: string) => {
     setSelectedSectors((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
+  };
+
+  const toggleSubscription = (id: string) => {
+    setSubscriptions((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleSave = async () => {
@@ -99,6 +142,7 @@ export default function SettingsPage() {
           emailOptIn,
           timezone,
           watchlist: tickers,
+          subscriptions,
         }),
       });
       setSaved(true);
@@ -110,7 +154,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (status === "loading") {
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="flex items-center gap-3 text-muted-foreground">
@@ -294,18 +338,10 @@ export default function SettingsPage() {
                     Receive your brief by email every market day
                   </div>
                 </div>
-                <button
-                  onClick={() => setEmailOptIn(!emailOptIn)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${
-                    emailOptIn ? "bg-indigo-600" : "bg-white/[0.1]"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                      emailOptIn ? "translate-x-5" : "translate-x-0.5"
-                    }`}
-                  />
-                </button>
+                <Switch
+                  checked={emailOptIn}
+                  onCheckedChange={setEmailOptIn}
+                />
               </div>
 
               <Separator className="bg-white/[0.06]" />
@@ -326,6 +362,66 @@ export default function SettingsPage() {
                   ))}
                 </select>
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Newsletter Subscriptions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <Card className="glass border-white/[0.06] bg-white/[0.02]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                  <Bell className="w-4 h-4 text-emerald-400" />
+                </div>
+                Newsletter Subscriptions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {!emailOptIn && (
+                <p className="text-xs text-amber-400/80 mb-3">
+                  Email delivery is off. Turn it on above to receive newsletters.
+                </p>
+              )}
+              {SUBSCRIPTION_CATEGORIES.map((cat, idx) => {
+                const Icon = cat.icon;
+                return (
+                  <div key={cat.id}>
+                    <div className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center shrink-0">
+                          <Icon className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground flex items-center gap-2">
+                            {cat.label}
+                            {!cat.active && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                Coming Soon
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {cat.description}
+                          </div>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={subscriptions[cat.id] ?? true}
+                        onCheckedChange={() => toggleSubscription(cat.id)}
+                        disabled={!emailOptIn}
+                      />
+                    </div>
+                    {idx < SUBSCRIPTION_CATEGORIES.length - 1 && (
+                      <Separator className="bg-white/[0.04]" />
+                    )}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </motion.div>

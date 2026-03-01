@@ -58,6 +58,14 @@ export function Footer() {
                   Dashboard
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/blog"
+                  className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+                >
+                  Blog
+                </Link>
+              </li>
             </ul>
           </div>
           <div>

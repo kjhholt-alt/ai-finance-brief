@@ -21,6 +21,7 @@ import {
   Zap,
   Archive,
   Settings,
+  BookOpen,
 } from "lucide-react";
 
 export function Navigation() {
@@ -53,6 +54,12 @@ export function Navigation() {
               <Link href="/#pricing" className="text-muted-foreground hover:text-foreground">
                 <Zap className="w-4 h-4 mr-1.5" />
                 Beta Access
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/blog" className="text-muted-foreground hover:text-foreground">
+                <BookOpen className="w-4 h-4 mr-1.5" />
+                Blog
               </Link>
             </Button>
             {session?.user ? (
@@ -124,6 +131,15 @@ export function Navigation() {
                   >
                     <Zap className="w-4 h-4" />
                     Beta Access
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link
+                    href="/blog"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    Blog
                   </Link>
                 </SheetClose>
                 {session?.user ? (

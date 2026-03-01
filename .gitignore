@@ -36,3 +36,9 @@ next-env.d.ts
 
 # data (user data, caches, archives)
 /data/
+
+# secrets
+.env.production
+.env.vercel.production
+.env.vercel.*
+.env.local

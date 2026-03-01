@@ -62,4 +62,47 @@
   .glow-sm {
     box-shadow: 0 0 20px -5px hsl(239 84% 67% / 0.2);
   }
+  .prose-blog {
+    @apply text-muted-foreground leading-relaxed;
+  }
+  .prose-blog h2 {
+    @apply text-xl font-bold text-foreground mt-10 mb-4;
+  }
+  .prose-blog h3 {
+    @apply text-lg font-semibold text-foreground mt-8 mb-3;
+  }
+  .prose-blog p {
+    @apply mb-4;
+  }
+  .prose-blog ul,
+  .prose-blog ol {
+    @apply mb-4 ml-6;
+  }
+  .prose-blog li {
+    @apply mb-2;
+  }
+  .prose-blog ul li {
+    @apply list-disc;
+  }
+  .prose-blog ol li {
+    @apply list-decimal;
+  }
+  .prose-blog a {
+    @apply text-indigo-400 hover:text-indigo-300 underline underline-offset-2 transition-colors;
+  }
+  .prose-blog blockquote {
+    @apply border-l-2 border-indigo-500/30 pl-4 italic text-muted-foreground/80 my-4;
+  }
+  .prose-blog code {
+    @apply bg-white/[0.06] px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+  .prose-blog pre {
+    @apply bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 overflow-x-auto mb-4;
+  }
+  .prose-blog strong {
+    @apply text-foreground font-semibold;
+  }
+  .prose-blog hr {
+    @apply border-white/[0.06] my-8;
+  }
 }

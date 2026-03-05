@@ -3,8 +3,8 @@
 
 ## Quick Status
 - **Project:** AI Finance Brief
-- **Current session:** 11 (real market data pipeline)
-- **Last updated:** 2026-02-16
+- **Current session:** 12 (beta language removal + deploy)
+- **Last updated:** 2026-03-04
 - **Overall health:** 🟢 PRODUCTION LIVE — real market data flowing
 
 ---
@@ -100,6 +100,21 @@
 
 ---
 
+## Last Session Summary (Session 12)
+**Date:** 2026-03-04
+**Goal:** Remove beta language from landing page
+**What got done:**
+- Removed "Live Beta — Free Access" badge → "Now Live — Free Tier Available"
+- Changed "beta investors" → "active users"
+- Changed "Free during beta" → "Always free" in pricing
+- Updated FAQ "Is it free?" answer with actual Free vs Pro tier details
+- Updated bottom CTA to remove beta qualifier
+- Deployed to Vercel production
+
+**What didn't get done (and why):**
+- Resend email delivery (user skipped for now — no API key configured)
+- LemonSqueezy product creation (manual step, deferred)
+
 ## Next Session Plan
 **Goal:** Set up Resend email delivery, test morning email cron, LemonSqueezy payment flow
 **Prerequisites:**
@@ -111,6 +126,7 @@
 - FMP market data pipeline live (5 sources: indices, movers, sectors, VIX, treasury)
 - kjh.holt@gmail.com added to waitlist/distribution list
 - Cron configured: 7am ET Mon-Fri for email, 7:30am ET for Twitter
+- Beta language removed from landing page (2026-03-04)
 **FMP free tier limits (known):**
 - Single-symbol quotes only (no batch) — SPY works, QQQ/DIA/GLD/USO return 402
 - Economic calendar is premium
@@ -161,3 +177,4 @@
 | 9 | 2026-02-14 | Deployment verified | ✅ | Live at ai-finance-brief.vercel.app, STATUS.md updated |
 | 10 | 2026-02-15 | Revenue-ready upgrade | ✅ | Supabase migration, LemonSqueezy, feature gating, 20 SEO pages |
 | 11 | 2026-02-16 | Real market data pipeline | ✅ | Replaced Alpha Vantage with FMP, 5 live data sources, Supabase tables created, Anthropic SDK updated, production verified |
+| 12 | 2026-03-04 | Beta language removal | ✅ | Removed all "beta" references from landing page, updated pricing/FAQ copy, deployed to Vercel |

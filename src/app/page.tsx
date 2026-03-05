@@ -133,7 +133,7 @@ const faqs = [
   },
   {
     q: "Is it free?",
-    a: "Yes. AI Finance Brief is completely free during beta. We plan to introduce a Pro tier with additional features like email delivery and custom watchlists, but the core experience will always have a free option.",
+    a: "Yes! The Free tier gives you 3 briefs per week and dashboard access at no cost. The Pro tier ($9/month) adds daily briefs, email delivery, custom watchlists, and full archive access.",
   },
   {
     q: "When do I get my brief?",
@@ -249,7 +249,7 @@ export default function Home() {
                 className="mb-6 border-emerald-500/30 bg-emerald-500/10 text-emerald-300 px-4 py-1.5 text-sm font-medium"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-2 inline-block" />
-                Live Beta &mdash; Free Access
+                Now Live &mdash; Free Tier Available
               </Badge>
             </motion.div>
 
@@ -355,7 +355,7 @@ export default function Home() {
                 <span className="text-lg font-bold text-foreground font-mono">
                   {subscriberCount !== null ? `${subscriberCount}+` : "50+"}
                 </span>
-                <p className="text-xs text-muted-foreground">beta investors</p>
+                <p className="text-xs text-muted-foreground">active users</p>
               </div>
             </div>
             <div className="w-px h-8 bg-white/[0.08] hidden sm:block" />
@@ -601,7 +601,7 @@ export default function Home() {
               Simple, transparent pricing
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto text-lg">
-              Start free during beta. Upgrade when you&apos;re ready.
+              Start free. Upgrade when you&apos;re ready.
             </p>
           </AnimatedSection>
 
@@ -625,7 +625,7 @@ export default function Home() {
                     </Badge>
                     <CardTitle className="text-2xl">Free</CardTitle>
                     <p className="text-muted-foreground text-sm mt-1">
-                      Free during beta
+                      Always free
                     </p>
                   </div>
                   <div className="flex items-baseline gap-1">
@@ -775,7 +775,7 @@ export default function Home() {
                   </h2>
                   <p className="text-muted-foreground mb-4 max-w-lg mx-auto">
                     Join investors who start their day with an AI-powered market
-                    brief. Free during beta, no credit card required.
+                    brief. Free tier available, no credit card required.
                   </p>
 
                   <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground/60 mb-8">

@@ -5,10 +5,11 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   request: Request,
-  { params }: { params: { date: string } }
+  { params }: { params: Promise<{ date: string }> }
 ) {
   try {
-    const brief = await getBriefByDate(params.date);
+    const { date } = await params;
+    const brief = await getBriefByDate(date);
     if (!brief) {
       return NextResponse.json(
         { error: "No brief found for this date" },

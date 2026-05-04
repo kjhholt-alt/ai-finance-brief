@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { TwitterApi } from "twitter-api-v2";
-import Anthropic from "@anthropic-ai/sdk";
+import { claudeMessage } from "@/lib/anthropic";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -34,23 +34,15 @@ async function handleCron(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check required env vars
+  // Check required env vars (Claude goes through claudex — no key needed)
   const consumerKey = process.env.TWITTER_CONSUMER_KEY;
   const consumerSecret = process.env.TWITTER_CONSUMER_SECRET;
   const accessToken = process.env.TWITTER_ACCESS_TOKEN;
   const accessTokenSecret = process.env.TWITTER_ACCESS_TOKEN_SECRET;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
 
   if (!consumerKey || !consumerSecret || !accessToken || !accessTokenSecret) {
     return NextResponse.json(
       { error: "Twitter credentials not configured" },
-      { status: 503 }
-    );
-  }
-
-  if (!anthropicKey) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured" },
       { status: 503 }
     );
   }
@@ -73,32 +65,22 @@ async function handleCron(request: Request) {
 
     const brief = await briefRes.json();
 
-    // Generate tweet with Claude Haiku
-    const anthropic = new Anthropic({ apiKey: anthropicKey });
-    const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 200,
-      messages: [
-        {
-          role: "user",
-          content: `Generate a single tweet (max 270 chars) about today's market based on this data. Lead with the most interesting insight. Use specific numbers. No hashtags, no emojis. Sound like a smart analyst. Return ONLY the tweet text.
+    // Generate tweet via claudex (Max sub, no API key)
+    const tweetText = (
+      await claudeMessage({
+        max_tokens: 200,
+        messages: [
+          {
+            role: "user",
+            content: `Generate a single tweet (max 270 chars) about today's market based on this data. Lead with the most interesting insight. Use specific numbers. No hashtags, no emojis. Sound like a smart analyst. Return ONLY the tweet text.
 
 Market: ${brief.marketPulse || brief.summary || ""}
 Top movers: ${(brief.topMovers || []).slice(0, 3).map((m: { ticker: string; change: string }) => `${m.ticker} ${m.change}`).join(", ")}
 ${brief.nonObviousTake ? `Insight: ${brief.nonObviousTake}` : ""}`,
-        },
-      ],
-    });
-
-    const tweetContent = message.content[0];
-    if (tweetContent.type !== "text") {
-      return NextResponse.json(
-        { error: "Unexpected Claude response" },
-        { status: 500 }
-      );
-    }
-
-    const tweetText = tweetContent.text.trim();
+          },
+        ],
+      })
+    ).trim();
     const sampleUrl = `${baseUrl}/sample?utm_source=twitter&utm_medium=organic&utm_campaign=daily_cron`;
     const fullTweet = `${tweetText}\n\n${sampleUrl}`;
 

@@ -14,13 +14,14 @@
  *   TWITTER_CONSUMER_SECRET
  *   TWITTER_ACCESS_TOKEN         (OAuth 1.0a — needed to post)
  *   TWITTER_ACCESS_TOKEN_SECRET  (OAuth 1.0a — needed to post)
- *   ANTHROPIC_API_KEY            (for Claude Haiku tweet generation)
+ *
+ * Claude calls go through claudex (Max-sub `claude -p`) — no API key.
  *
  * Schedule: Run daily at 7:00 AM ET (after brief generates at ~6 AM)
  */
 
 import { TwitterApi } from "twitter-api-v2";
-import Anthropic from "@anthropic-ai/sdk";
+import { ask } from "../../src/lib/claudex.js";
 import { config } from "dotenv";
 import { resolve } from "path";
 
@@ -60,14 +61,7 @@ function getTwitterClient(): TwitterApi {
 }
 
 // ─── Claude Client ───────────────────────────────────────────────────
-function getAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error("Missing ANTHROPIC_API_KEY in .env.local");
-    process.exit(1);
-  }
-  return new Anthropic({ apiKey });
-}
+// Backed by claudex (Max-sub `claude -p` subprocess) — no API key.
 
 // ─── Brief Data Types ────────────────────────────────────────────────
 interface TopMover {
@@ -117,8 +111,6 @@ async function fetchTodaysBrief(): Promise<BriefData | null> {
 
 // ─── Generate Tweet with Claude ──────────────────────────────────────
 async function generateTweet(brief: BriefData): Promise<string> {
-  const anthropic = getAnthropicClient();
-
   const prompt = `You are a social media writer for a finance product called AI Finance Brief. Generate a single tweet (max 270 characters to leave room for a link) based on today's market brief data.
 
 BRIEF DATA:
@@ -144,22 +136,12 @@ RULES:
 - End with something that makes people want to click for more
 - Return ONLY the tweet text, nothing else`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 200,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const content = message.content[0];
-  if (content.type !== "text") throw new Error("Unexpected Claude response");
-
-  return content.text.trim();
+  const r = await ask(prompt, { useCache: false, timeoutMs: 60_000 });
+  return r.text.trim();
 }
 
 // ─── Generate Thread with Claude ─────────────────────────────────────
 async function generateThread(brief: BriefData): Promise<string[]> {
-  const anthropic = getAnthropicClient();
-
   const prompt = `You are a social media writer for a finance product called AI Finance Brief. Generate a 4-tweet thread based on today's market brief.
 
 BRIEF DATA:
@@ -185,16 +167,8 @@ RULES:
 - Return each tweet on its own line, separated by ---
 - Return ONLY the tweets, nothing else`;
 
-  const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 500,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const content = message.content[0];
-  if (content.type !== "text") throw new Error("Unexpected Claude response");
-
-  return content.text
+  const r = await ask(prompt, { useCache: false, timeoutMs: 90_000 });
+  return r.text
     .trim()
     .split("---")
     .map((t) => t.trim())

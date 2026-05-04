@@ -3,7 +3,7 @@
  * Fetches market data from FMP -> sends to Claude API -> returns structured brief
  */
 
-import { getAnthropic } from "@/lib/anthropic";
+import { claudeMessage } from "@/lib/anthropic";
 import { getAllMarketData, type AllMarketData } from "@/lib/data/market";
 import { createServerSupabase } from "@/lib/supabase";
 
@@ -206,21 +206,14 @@ export async function generateDailyBrief(forceRefresh = false): Promise<BriefDat
   // Step 2: Build structured prompt with labeled sections
   const prompt = buildPrompt(marketData);
 
-  // Step 3: Call Claude API
-  const anthropic = getAnthropic();
-  const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 2000,
+  // Step 3: Call Claude via claudex (Max sub, no API key)
+  const text = await claudeMessage({
     messages: [{ role: "user", content: prompt }],
+    max_tokens: 2000,
   });
 
-  const content = message.content[0];
-  if (content.type !== "text") {
-    throw new Error("Unexpected response type from Claude");
-  }
-
   // Step 4: Parse and structure — strip markdown fences if Claude adds them
-  let jsonText = content.text.trim();
+  let jsonText = text.trim();
   if (jsonText.startsWith("```")) {
     jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   }
